@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: user1-role
+  namespace: dev
+rules:
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services", "pods", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: user1-binding
+  namespace: dev
+subjects:
+- kind: User 
+  name: user1
+  namespace: dev 
+roleRef:
+  kind: Role
+  name: user1-role
+  apiGroup: rbac.authorization.k8s.io
+

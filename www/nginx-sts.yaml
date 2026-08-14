@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: dev
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 443 
+    name: https
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+  namespace: dev
+spec:
+  serviceName: nginx
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 443
+          name: https
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+        - name: tls
+          mountPath: /etc/nginx/tls
+          readOnly: true
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: tls
+        csi:
+          driver: csi.cert-manager.io
+          readOnly: true
+          volumeAttributes:
+            csi.cert-manager.io/issuer-name: ca-issuer
+            csi.cert-manager.io/issuer-kind: ClusterIssuer
+            csi.cert-manager.io/dns-names: ${POD_NAME}.${POD_NAMESPACE}.svc.cluster.local,www.home.lab
+            csi.cert-manager.io/ip-sans: 10.0.0.31
+            csi.cert-manager.io/common-name: "${SERVICE_ACCOUNT_NAME}.${POD_NAMESPACE}"
+
