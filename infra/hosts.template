@@ -1,20 +1,34 @@
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
+# the user who has sudo privilege on remote hosts
 ansible_user=REMOTE_USER
+# the user's password on remote hosts
 ansible_sudo_pass=CHANGEME!
+# k8s release version
 k8s_version=1.36.2
+# used by k8s repo 
 k8s_repo_version="1.36"
+# pod cidr of k8s
 pod_cidr=192.168.0.0/16
+# kube api advertised ip address (external)
 api_adv_addr=10.0.0.10
 extra_sans=m1.home.lab
+# calico version used by ansible action to pull calico manifests.
 calico_version=v3.32.1
+# metallb version
 metallb_version=v0.16.1
+# rook-ceph version
 rook="1.20"
+# cert-manager version
 cm_version=v1.21.1
+# metallb loadbalancer ip range (L2)
 ip_range=10.0.0.31-10.0.0.50
+# cluster issuer cert/key
 root_crt=root.crt
 root_key=root.key
+# kubeconfig location
 kubeconf=~/.kube/config
+# keycloak (oidc/saml sso server)
 keycloak_version=26.7.0
 
 [master]
@@ -31,3 +45,4 @@ ms2.home.lab ansible_host=10.0.0.16
 w1.home.lab ansible_host=10.0.0.11
 w2.home.lab ansible_host=10.0.0.12
 w3.home.lab ansible_host=10.0.0.13
+ns1.home.lab ansible_host=10.0.0.8

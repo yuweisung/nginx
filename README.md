@@ -4,20 +4,21 @@
 
 ## Implementation
 
-### 1. K8s with kubeadm
-
     The practice contains two parts, one is k8s (kubeadm) deployment to my home lab, and the other is nginx statefulset deployment. 
+
+### 1. K8s with kubeadm
 
 * Installing ansible
 
-    Refer to ansible site to install ansible to your local desktop.
+    "ansible" is required in this repo to wrap kubeadm init/join commands. Refer to ansible site to install ansible to your local desktop.
+
     ```
     brew install ansible
     ```
 
 * Modifying the hosts file (inventory)
 
-    Modify the hosts file to reflect your inventory.  I have 1 master and 4 workers (ubuntu servers) and have ssh-copy-id sending my ssh public key to those servers.  
+    Modify the hosts file to reflect your inventory.  I have 1 master and 4 workers (ubuntu servers) and have ssh-copy-id sending my ssh public key to those servers. 
 
     ```
     mv hosts.template hosts
@@ -25,13 +26,23 @@
 
 * Deploying k8s cluster
 
-    First, as k8s requirements, setup some kernel configs in each server.  The os/main.yaml has those actions.
+    First, as k8s requirements, setup some kernel configs in each server.  The action includes:
+    1) containerd
+    2) k8s kernel modules
+    3) sysctl
+    4) k8s gpg keys
 
     ```
     ansible-playbook os/main.yaml
     ```
 
-    Second, run kubeadm/main.yaml to deploy k8s control/data planes. The kubeadm.yaml will be used in kubeadm init process.
+    Second, run kubeadm/main.yaml to deploy k8s control/data planes. The kubeadm.yaml will be used in kubeadm init process.The kubeadm/main.yaml includes actions: 
+    1) copy the kubeadm.config to master host
+    2) run kubeadm init with the config file
+    3) copy the admin.conf to local once the control-plane is init
+    4) run kubeadm join command on all worker nodes
+    5) apply some kube-bench harden works
+    
 
     ```
     ansible-playbook kubeadm/main.yaml
@@ -50,7 +61,7 @@
     w4.home.lab     NotReady    <none>          17h   v1.36.3
     ```
 
-    Next step, we deploy the callico cni. You should see that nodes are READY after calico installed. The last action in the playbook is a for loop to approve kubelet csr. Check csr status before you move to next step.
+    Next step, we deploy the callico cni. You should see that nodes are READY after calico installed. The last action in the playbook is a for loop to approve kubelet csr. Check csr status before you move to next step. Refer to calico doc for calico operator installation detail. 
 
     ```
     ansible-playbook kubectl/0_callico.yaml
@@ -285,4 +296,26 @@
     EOF
     ```
 
-# argocd
+* Testing manifests with kubectl user1 context
+    
+    Before pushing the artifacts to github, deploy them using kubectl.
+    ```
+    kubectl config use-context user1-context
+    kubectl apply -f nginx-cm.yaml
+    kubectl apply -f nginx-sts.yaml
+    kubectl apply -f nginx-ext-svc.yaml
+    ```
+    ![Nginx Page](./assets/nginx.png)
+
+### Argocd
+
+TBC...
+
+## 3. Reset the k8s cluster
+To destroy the cluster, you can use the reset playbook. It will remove cni, rook and lvm labels.
+
+```
+ansible-playbook kubeadm/reset.yaml
+```
+  
+## 4. Troubleshooting
