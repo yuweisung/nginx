@@ -2,9 +2,79 @@
 ## Design
 
 
-## Steps
+## Implementation
 
-### Config k8s user/role/conetxt
+### 1. K8s with kubeadm
+
+    The practice contains two parts, one is k8s (kubeadm) deployment to my home lab, and the other is nginx statefulset deployment. 
+
+* Installing ansible
+
+    Refer to ansible site to install ansible to your local desktop.
+    ```
+    brew install ansible
+    ```
+
+* Modifying the hosts file (inventory)
+
+    Modify the hosts file to reflect your inventory.  I have 1 master and 4 workers (ubuntu servers) and have ssh-copy-id sending my ssh public key to those servers.  
+
+    ```
+    mv hosts.template hosts
+    ```
+
+* Deploying k8s cluster
+
+    First, as k8s requirements, setup some kernel configs in each server.  The os/main.yaml has those actions.
+
+    ```
+    ansible-playbook os/main.yaml
+    ```
+
+    Second, run kubeadm/main.yaml to deploy k8s control/data planes. The kubeadm.yaml will be used in kubeadm init process.
+
+    ```
+    ansible-playbook kubeadm/main.yaml
+    ```
+
+    Once the actions finished, you can use kubectl to check the status because one of the task pulled the admin.conf to ~/.kube/config directly.  It should look like this:
+
+    ```
+    kubectl get nodes
+    NAME            STATUS   ROLES           AGE   VERSION
+    m1.home.lab     NotReady    control-plane   17h   v1.36.3
+    ms1.home.lab    NotReady    <none>          17h   v1.36.3
+    ms2.home.lab    NotReady    <none>          17h   v1.36.3
+    nuc9.home.lab   NotReady    <none>          17h   v1.36.3
+    p3.home.lab     NotReady    <none>          17h   v1.36.3
+    w4.home.lab     NotReady    <none>          17h   v1.36.3
+    ```
+
+    Next step, we deploy the callico cni. You should see that nodes are READY after calico installed. The last action in the playbook is a for loop to approve kubelet csr. Check csr status before you move to next step.
+
+    ```
+    ansible-playbook kubectl/0_callico.yaml
+    ...
+    k get nodes
+    NAME            STATUS   ROLES           AGE   VERSION
+    m1.home.lab     Ready    control-plane   17h   v1.36.3
+    ms1.home.lab    Ready    <none>          17h   v1.36.3
+    ms2.home.lab    Ready    <none>          17h   v1.36.3
+    nuc9.home.lab   Ready    <none>          17h   v1.36.3
+    p3.home.lab     Ready    <none>          17h   v1.36.3
+    w4.home.lab     Ready    <none>          17h   v1.36.3
+    ``` 
+
+    Continue installing metallb, rook-ceph and cert-manager by running following playbooks. Note that you will need a keypair (self-signed) to create a ca-issuer.  Google openssl self-sign for commands.
+
+    ```
+    ansible-playbook kubectl/2_metallb.yaml
+    ansible-playbook kubectl/3_rook-ceph.yaml
+    ansible-playbook kubectl/4_cert-manager.yaml
+    ```
+    
+
+### 2. Nginx statefulset with TLS
 
 * Creating private key and csr
 
@@ -94,9 +164,8 @@
     kubectl config use-context user1-context
     ```
 
-### Deploy nginx web statefulset
 
-* Preppare nginx config
+* Prepparing nginx config
 
     ```
     cat <<EOF >nginx-cm.yaml
@@ -126,7 +195,7 @@
     EOF
     ```
 
-* Prepare nginx statefulset
+* Preparing nginx statefulset
 
     ```
     cat <<EOF >nginx-sts.yaml
@@ -192,7 +261,7 @@
     EOF
     ```
 
-* Prepare nginx loadbalancer service
+* Preparing nginx loadbalancer service
 
     ```
     cat <<EOF >nginx-ext-svc.yaml
@@ -216,3 +285,4 @@
     EOF
     ```
 
+# argocd
