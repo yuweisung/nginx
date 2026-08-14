@@ -42,39 +42,21 @@
     3) copy the admin.conf to local once the control-plane is init
     4) run kubeadm join command on all worker nodes
     5) apply some kube-bench harden works
-    
 
     ```
     ansible-playbook kubeadm/main.yaml
     ```
 
-    Once the actions finished, you can use kubectl to check the status because one of the task pulled the admin.conf to ~/.kube/config directly.  It should look like this:
+    Once the actions finished, you can use kubectl to check the status because one of the task pulled the admin.conf to ~/.kube/config directly. 
+    Next step, we deploy the callico cni. You should see that nodes are READY after calico installed. The last action in the playbook is a for loop to approve kubelet csr. Check csr status before you move to next step. Refer to calico doc for calico operator installation detail.
 
-    ```
-    kubectl get nodes
-    NAME            STATUS   ROLES           AGE   VERSION
-    m1.home.lab     NotReady    control-plane   17h   v1.36.3
-    ms1.home.lab    NotReady    <none>          17h   v1.36.3
-    ms2.home.lab    NotReady    <none>          17h   v1.36.3
-    nuc9.home.lab   NotReady    <none>          17h   v1.36.3
-    p3.home.lab     NotReady    <none>          17h   v1.36.3
-    w4.home.lab     NotReady    <none>          17h   v1.36.3
-    ```
-
-    Next step, we deploy the callico cni. You should see that nodes are READY after calico installed. The last action in the playbook is a for loop to approve kubelet csr. Check csr status before you move to next step. Refer to calico doc for calico operator installation detail. 
-
+    
     ```
     ansible-playbook kubectl/0_callico.yaml
-    ...
-    k get nodes
-    NAME            STATUS   ROLES           AGE   VERSION
-    m1.home.lab     Ready    control-plane   17h   v1.36.3
-    ms1.home.lab    Ready    <none>          17h   v1.36.3
-    ms2.home.lab    Ready    <none>          17h   v1.36.3
-    nuc9.home.lab   Ready    <none>          17h   v1.36.3
-    p3.home.lab     Ready    <none>          17h   v1.36.3
-    w4.home.lab     Ready    <none>          17h   v1.36.3
-    ``` 
+    ```
+
+
+    ![K8S nodes](./assets/nodes.png)
 
     Continue installing metallb, rook-ceph and cert-manager by running following playbooks. Note that you will need a keypair (self-signed) to create a ca-issuer.  Google openssl self-sign for commands.
 
@@ -84,6 +66,9 @@
     ansible-playbook kubectl/4_cert-manager.yaml
     ```
     
+    After the deployment, you should see namespaces
+
+    ![K8S namespaces](./assets/namespaces.png)
 
 ### 2. Nginx statefulset with TLS
 
@@ -305,6 +290,12 @@
     kubectl apply -f nginx-sts.yaml
     kubectl apply -f nginx-ext-svc.yaml
     ```
+    
+    You should see two services, one is headless and the other is external.
+
+    ![Nginx](./assets/nginxsvc.png)
+
+    From the web browser
     ![Nginx Page](./assets/nginx.png)
 
 ### Argocd
