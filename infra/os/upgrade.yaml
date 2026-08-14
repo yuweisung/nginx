@@ -1,0 +1,42 @@
+---
+- hosts: master,workers
+  gather_facts: no
+  become: yes
+  tasks:
+  - name: hold k8s
+    dpkg_selections:
+      name: "{{ item }}"
+      selection: hold
+    with_items:
+    - kubelet
+    - kubeadm
+    - kubectl
+- hosts: all
+  gather_facts: no
+  become: yes
+  tasks:
+  - name: Wait for apt lock to be released
+    ansible.builtin.command: while sudo lsof /var/lib/dpkg/lock 2> /dev/null; do sleep 10; done
+    args:
+      creates: /var/lib/dpkg/lock # Only runs if lock file exists (simple check)
+    become: true
+
+  - name: upgrade all apt packages
+    apt: 
+      upgrade: yes
+      force_apt_get: yes
+      update_cache: yes
+      cache_valid_time: 3600 
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+  - name: check reboot
+    register: reboot_required_file
+    stat: path=/var/run/reboot-required
+  - name: reboot if necessary
+    reboot:
+      msg: "Reboot inited by ansible due to kernel updates"
+      connect_timeout: 120
+      reboot_timeout: 600
+      pre_reboot_delay: 0
+      test_command: uptime
+    when: reboot_required_file.stat.exists

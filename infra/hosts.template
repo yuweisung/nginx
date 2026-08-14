@@ -1,0 +1,33 @@
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_user=REMOTE_USER
+ansible_sudo_pass=CHANGEME!
+k8s_version=1.36.2
+k8s_repo_version="1.36"
+pod_cidr=192.168.0.0/16
+api_adv_addr=10.0.0.10
+extra_sans=m1.home.lab
+calico_version=v3.32.1
+metallb_version=v0.16.1
+rook="1.20"
+cm_version=v1.21.1
+ip_range=10.0.0.31-10.0.0.50
+root_crt=root.crt
+root_key=root.key
+kubeconf=~/.kube/config
+keycloak_version=26.7.0
+
+[master]
+m1.home.lab ansible_host=10.0.0.10
+
+[workers]
+w4.home.lab ansible_host=10.0.0.14
+nuc9.home.lab ansible_host=10.0.0.19
+p3.home.lab ansible_host=10.0.0.17
+ms1.home.lab ansible_host=10.0.0.15
+ms2.home.lab ansible_host=10.0.0.16
+
+[bm]
+w1.home.lab ansible_host=10.0.0.11
+w2.home.lab ansible_host=10.0.0.12
+w3.home.lab ansible_host=10.0.0.13

@@ -1,0 +1,54 @@
+- hosts: localhost
+  gather_facts: no
+  environment:
+    KUBECONFIG: "{{ kubeconf | default('/Users/ysung/.kube/config')}}"
+  tasks:
+  - name: download calico operator
+    ansible.builtin.get_url:
+      url: https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml
+      dest: /tmp/tigera-operator.yaml
+      mode: '0664'
+  - name: create tigera-operator namespace
+    kubernetes.core.k8s:
+      name: tigera-operator
+      api_version: v1
+      kind: Namespace
+      state: present
+  - name: k8s-api endpoint
+    kubernetes.core.k8s:
+      state: present
+      src: /Users/ysung/git/homelab/k8s-api-endpoint-cm.yaml
+  - name: apply tigera-operator
+    kubernetes.core.k8s:
+      state: present
+      src: /tmp/tigera-operator.yaml
+  - name: wait for webhook
+    ansible.builtin.wait_for:
+      timeout: 60 
+  - name: download calico custom resource
+    ansible.builtin.get_url:
+      url: https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/custom-resources.yaml
+      dest: /tmp/custom-resources.yaml
+      mode: '0664'
+  - name: apply calico cr
+    kubernetes.core.k8s:
+      state: present
+      src: /tmp/custom-resources.yaml 
+  - name: wait for webhook
+    ansible.builtin.wait_for:
+      timeout: 120
+  - name: patch dataplane
+    ansible.builtin.shell: |
+      # kubectl patch installation.operator.tigera.io default --type merge -p '{"spec":{"calicoNetwork":{"linuxDataplane":"BPF", "hostPorts":null}}}'
+      kubectl patch felixconfigurations default --type='json' -p='[{"op": "add", "path": "/spec/workloadSourceSpoofing", "value": "Any"}]'
+      # calicoctl path felixconfiguration default --path='{"spec": {"bpfExternalServiceMode":"DSR"}}'
+  - name: k8s gateway crd
+    ansible.builtin.shell: |
+      kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || \
+      { kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd/experimental?ref=v1.0.0" | kubectl apply -f -; }
+  - name: wait for webhook
+    ansible.builtin.wait_for:
+      timeout: 30
+  - name: approve csr
+    ansible.builtin.shell: |
+      for i in `k get csr --no-headers| awk '{print $1}'`; do k certificate approve $i; done

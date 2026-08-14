@@ -1,0 +1,85 @@
+- hosts: localhost
+  gather_facts: no
+  environment:
+    KUBECONFIG: "{{ kubeconf | default('/Users/ysung/.kube/config')}}"
+  tasks:
+  - name: add jetstack
+    kubernetes.core.helm_repository:
+      name: jetstack
+      repo_url: https://charts.jetstack.io
+    ignore_errors: true
+  - name: install cert-manager
+    kubernetes.core.helm:
+      name: cm
+      release_namespace: cert-manager
+      chart_ref: jetstack/cert-manager
+      update_repo_cache: true
+      create_namespace: true
+      force: true
+      set_values:
+        - value: installCRDs=true
+  - name: wait for webhook
+    ansible.builtin.wait_for:
+      timeout: 30
+  - name: install cert-manager-csi
+    kubernetes.core.helm:
+      name: cm-csi
+      release_namespace: cert-manager
+      chart_ref: jetstack/cert-manager-csi-driver
+      update_repo_cache: true
+#  - name: install trust-manager
+#    kubernetes.core.helm:
+#      name: trust-manager
+#      release_namespace: cert-manager
+#      chart_ref: jetstack/trust-manager
+#      update_repo_cache: true
+#      set_values:
+#        - value: secretTargets.enabled=true
+#        - value: secretTargets.authorizedSecretsAll=true
+#  - name: wait for trust-manager
+#    ansible.builtin.wait_for:
+#      timeout: 30
+  - name: create ca secret
+    ansible.builtin.shell: |
+      kubectl create secret tls ca-secret -n cert-manager --key={{ root_key }} --cert={{ root_crt }}
+    ignore_errors: true
+  - name: create cluster issuer
+    kubernetes.core.k8s:
+      definition:    
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: ca-issuer
+        spec:
+          ca:
+            secretName: ca-secret
+  # - name: create trust bundle
+  #   tags:
+  #     - bundle
+  #   kubernetes.core.k8s:
+  #     definition: 
+  #       apiVersion: trust.cert-manager.io/v1alpha1
+  #       kind: Bundle
+  #       metadata:
+  #         name: homelab
+  #       spec:
+  #         sources:
+  #         - useDefaultCAs: true
+  #         - secret:
+  #             name: "ca-secret"
+  #             key: "tls.crt"
+  #         target:
+  #           configMap:
+  #             key: "ca.pem"
+  #           additionalFormats:
+  #             jks:
+  #               key: "bundle.jks"
+  #             pkcs12:
+  #               key: "bundle.p12"
+  #           secret:
+  #             key: "cabundle"              
+  #           # namespaceSelector:
+  #           #   matchLabels:
+  #           #     cert-manager.io/trust-manager: "trusted"
+
+  

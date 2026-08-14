@@ -1,0 +1,21 @@
+- hosts: all
+  gather_facts: yes
+  become: yes
+  tags: kubescape
+  tasks:
+  - name: kubelet dropin
+    ansible.builtin.file:
+      path: /etc/kubernetes/kubelet.conf.d
+      state: directory
+      owner: root
+      group: root
+      mode: '600'
+  - name: patch kubelet
+    ansible.builtin.copy:
+      src: /Users/ysung/git/homelab/kubelet.conf
+      dest: /etc/kubernetes/kubelet.conf.d/01-kubelet.conf
+  - name: restart kubelet
+    ansible.builtin.systemd_service:
+      name: kubelet.service
+      state: restarted
+      daemon_reload: true
