@@ -21,6 +21,7 @@
     Modify the hosts file to reflect your inventory.  I have 1 master and 4 workers (ubuntu servers) and have ssh-copy-id sending my ssh public key to those servers. 
 
     ```
+    cd infra
     mv hosts.template hosts
     ```
 
@@ -33,6 +34,7 @@
     4) k8s gpg keys
 
     ```
+    cd infra
     ansible-playbook os/main.yaml
     ```
 
@@ -44,6 +46,7 @@
     5) apply some kube-bench harden works
 
     ```
+    cd infra
     ansible-playbook kubeadm/main.yaml
     ```
 
@@ -52,6 +55,7 @@
 
     
     ```
+    cd infra
     ansible-playbook kubectl/0_callico.yaml
     ```
 
@@ -61,6 +65,7 @@
     Continue installing metallb, rook-ceph and cert-manager by running following playbooks. Note that you will need a keypair (self-signed) to create a ca-issuer.  Google openssl self-sign for commands.
 
     ```
+    cd infra
     ansible-playbook kubectl/2_metallb.yaml
     ansible-playbook kubectl/3_rook-ceph.yaml
     ansible-playbook kubectl/4_cert-manager.yaml
@@ -298,6 +303,14 @@
     From the web browser
     ![Nginx Page](./assets/nginx.png)
 
+    (OPTIONAL) Now we can remove those artifacts and use Argocd to deploy the app from github.
+
+    ```
+    kubectl delete -f nginx-ext-svc.yaml
+    kubectl delete -f nginx-sts.yaml
+    kubectl delete -f nginx-cm.yaml
+    ```
+
 ### Argocd (Devops)
 
 * Installing argocd
@@ -327,14 +340,21 @@
     argocd login argocd.home.lab
     argocd app create nginx --repo https://github.com/yuweisung/nginx.git --path www --dest-namespace dev --dest-server https://kubernetes.default.svc
     ```
-    
-    Now open the web browser and login to argocd with admin/password.
+
+* Creating a github project
+    Login to github and create a project call 'nginx' and push the content to github. Argocd will chech the www folder and apply the manifests to k8s cluster dev namespace.
+
+    Once the content is on github repo, open the web browser and login to argocd with admin/password.
 
     ![ArgocdApp](./assets/argo-app.png)
 
 * Adding feattures to the nginx statefulset
 
+    TBC
 
+* Adding Harbor repo and customize nginx image
+
+    TBC
 
 ## 3. Reset the k8s cluster
 To destroy the cluster, you can use the reset playbook. It will remove cni, rook and lvm labels.
