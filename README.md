@@ -86,12 +86,12 @@
     apiVersion: certificates.k8s.io/v1
     kind: CertificateSigningRequest
     metadata:
-    name: user1-csr
+      name: user1-csr
     spec:
-    request: `cat user1.csr|base64|tr -d "\n"`
-    signerName: kubernetes.io/kube-apiserver-client
-    expirationSeconds: 864000
-    usages:
+      request: `cat user1.csr|base64|tr -d "\n"`
+      signerName: kubernetes.io/kube-apiserver-client
+      expirationSeconds: 864000
+      usages:
         - client auth
     EOF
     ```
@@ -168,10 +168,10 @@
     apiVersion: v1
     kind: ConfigMap
     metadata:
-    name: nginx-config
-    namespace: dev
+      name: nginx-config
+      namespace: dev
     data:
-    default.conf: |
+      default.conf: |
         server {
         listen      443 ssl http2;
         ssl_certificate /etc/nginx/tls/tls.crt;
@@ -187,7 +187,7 @@
         location = /50x.html {
             root   /usr/share/nginx/html;
         }
-        }
+      }
     EOF
     ```
 
@@ -199,53 +199,53 @@
     apiVersion: v1
     kind: Service
     metadata:
-    name: nginx
-    namespace: dev
-    labels:
+      name: nginx
+      namespace: dev
+      labels:
         app: nginx
     spec:
-    ports:
-    - port: 443
+      ports:
+      - port: 443
         name: https
-    clusterIP: None
-    selector:
+      clusterIP: None
+      selector:
         app: nginx
     ---
     apiVersion: apps/v1
     kind: StatefulSet
     metadata:
-    name: web
-    namespace: dev
+      name: web
+      namespace: dev
     spec:
-    serviceName: nginx
-    replicas: 2
-    selector:
+      serviceName: nginx
+      replicas: 2
+      selector:
         matchLabels:
         app: nginx
-    template:
+      template:
         metadata:
-        labels:
+          labels:
             app: nginx
         spec:
-        containers:
-        - name: nginx
+          containers:
+          - name: nginx
             image: nginx:latest
             ports:
             - containerPort: 443
-            name: https
+              name: https
             volumeMounts:
             - name: nginx-config
-            mountPath: /etc/nginx/conf.d/default.conf
-            subPath: default.conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
             - name: tls
-            mountPath: /etc/nginx/tls
-            readOnly: true
+              mountPath: /etc/nginx/tls
+              readOnly: true
         volumes:
         - name: nginx-config
-            configMap:
+          configMap:
             name: nginx-config
         - name: tls
-            csi:
+          csi:
             driver: csi.cert-manager.io
             readOnly: true
             volumeAttributes:
@@ -264,20 +264,20 @@
     apiVersion: v1
     kind: Service
     metadata:
-    name: nginx-ext-service
-    namespace: dev
+      name: nginx-ext-service
+      namespace: dev
     spec:
-    selector:
+      selector:
         app: nginx
-    ports:
-        - protocol: TCP
+      ports:
+      - protocol: TCP
         port: 443
         targetPort: 443
-    type: LoadBalancer
-    sessionAffinity: ClientIP
-    sessionAffinityConfig:
+      type: LoadBalancer
+      sessionAffinity: ClientIP
+      sessionAffinityConfig:
         clientIP:
-        timeoutSeconds: 10800
+          timeoutSeconds: 10800
     EOF
     ```
 
@@ -298,9 +298,43 @@
     From the web browser
     ![Nginx Page](./assets/nginx.png)
 
-### Argocd
+### Argocd (Devops)
 
-TBC...
+* Installing argocd
+
+    Run the default argocd manifest to install argocd in the same k8s cluster.
+
+    ```
+    kubectl create ns argocd
+    kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    ```
+
+* Setting TLS for Argocd server 
+
+    Argocd detect tls secret, argocd-server-tls, and auto mount the tls. Deploy the tls certificate in the "argocd" namespace will turn on TLS.
+
+    ```
+    kubectl apply -f infra/argocd/argocd-tls.yaml
+    ```
+    
+    You can find the argocd admin init password as secret in argocd namespace. Decode the secret and login the web ui as "admin".
+
+* Creating an application in argocd
+    
+    Let's create the first argocd application using argocd cli.
+
+    ```
+    argocd login argocd.home.lab
+    argocd app create nginx --repo https://github.com/yuweisung/nginx.git --path www --dest-namespace dev --dest-server https://kubernetes.default.svc
+    ```
+    
+    Now open the web browser and login to argocd with admin/password.
+
+    ![ArgocdApp](./assets/argo-app.png)
+
+* Adding feattures to the nginx statefulset
+
+
 
 ## 3. Reset the k8s cluster
 To destroy the cluster, you can use the reset playbook. It will remove cni, rook and lvm labels.
