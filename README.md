@@ -2,7 +2,7 @@
 ## Design
 An NGINX StatefulSet in Kubernetes manages stateful workloads, ensuring pod identity, persistent storage, and ordered deployments. Here is the design diagram and its core architectural breakdown.
 
-
+![NginxArchitecture](./assets/nginx-architecture.png)
 
 ### Core Architectural Features
 * Stable Network Identity: Each Pod gets a sticky, predictable hostname formatted as $(statefulset-name)-$(ordinal). For example: nginx-0, nginx-1, and nginx-2.
