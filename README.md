@@ -1,6 +1,28 @@
 # Nginx Practices
 ## Design
+An NGINX StatefulSet in Kubernetes manages stateful workloads, ensuring pod identity, persistent storage, and ordered deployments. Here is the design diagram and its core architectural breakdown.
 
+
+
+### Core Architectural Features
+* Stable Network Identity: Each Pod gets a sticky, predictable hostname formatted as $(statefulset-name)-$(ordinal). For example: nginx-0, nginx-1, and nginx-2.
+* Dedicated Storage (VolumeClaimTemplates): Unlike Deployments where pods share storage or claim volumes randomly, a StatefulSet assigns a unique PersistentVolumeClaim (PVC) to each Pod index. If nginx-0 restarts, it will reconnect exactly to pvc-nginx-0.
+* Ordered Deployment: Pods are created sequentially from 0 to N-1. The next pod will not start until the previous pod is completely healthy and running.
+
+### Primary Use Cases for NGINX StatefulSet
+While NGINX is usually deployed as a stateless application, there are specific, high-utility use cases that require a StatefulSet.
+
+1. Content Delivery Network (CDN) & Edge Caching
+   
+The Problem: If you deploy NGINX as a stateless Deployment, cached assets are distributed randomly. A pod restart loses the local cache entirely.The StatefulSet Solution: Each NGINX pod acts as a dedicated cache node. Because storage persists across pod restarts, cached data (like heavy media files, images, or static assets) survives crashes. This avoids hitting backends for cache misses.
+
+3. Stateful Reverse Proxy with Persistent Logs
+
+The Problem: High-compliance environments require audit logs and access logs to never be dropped or interrupted during a deployment rollout.The StatefulSet Solution: NGINX access/error logs write directly to isolated persistent storage attached to that specific node, facilitating reliable log shipping (via agents like FluentBit or Logstash) without data loss during restarts.
+
+4. Distinct NGINX Upstream Sharding
+
+The Problem: You need a fixed pool of proxy servers where external firewalls or internal services require predictable, static network endpoints.The StatefulSet Solution: Pairing NGINX with a Headless Service generates direct DNS A-records for each pod (e.g., nginx-0.nginx-service.default.svc.cluster.local). This allows upstream systems to target a specific NGINX instance deterministically.
 
 ## Implementation
 
